@@ -194,8 +194,12 @@ class LabelSystem:
 
         # ── Category / pool switch ────────────────────────────────────────────
         if person_present and category != self._category:
-            self._category  = category
+            self._category   = category
             self._label_pool = _pool_for(category)
+            # Fade out all existing labels so the new pool's labels replace them
+            for label in self._labels:
+                if not label.is_dead:
+                    label.fade_state = "out"
 
         # ── Anchor map ────────────────────────────────────────────────────────
         anchors = _build_anchors(landmarks)
