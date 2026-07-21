@@ -69,14 +69,6 @@ from src.label_system      import LabelSystem
 from src.renderer          import Renderer
 
 
-# ── Colour map for the HUD category readout (BGR) ────────────────────────────
-_HUD_COLORS = {
-    "feminine":  (147,  20, 255),   # hot pink
-    "masculine": (  0, 200, 255),   # orange
-    "mixed":     (  0, 255, 200),   # mint green
-}
-
-
 def main():
     # ── Camera setup ──────────────────────────────────────────────────────────
     cam_idx = _find_builtin_camera_index()
@@ -101,6 +93,8 @@ def main():
     debug        = False
     presentation = False
     prev_time    = time.perf_counter()
+    frame_idx    = 0
+    category, confidence = "mixed", 0.0
 
     print("Running — press  q  to quit,  d  for debug,  p  for presentation mode.")
 
@@ -116,8 +110,10 @@ def main():
         # ── Body tracking + segmentation ──────────────────────────────────────
         landmarks, seg_mask = tracker.process(frame)
 
-        # ── Gender classification ─────────────────────────────────────────────
-        category, confidence = classifier.classify(landmarks, frame)
+        # ── Gender classification (throttled — CPU-heavy) ─────────────────────
+        if frame_idx % config.CLASSIFY_EVERY == 0:
+            category, confidence = classifier.classify(landmarks, frame)
+        frame_idx += 1
 
         # ── Timing ────────────────────────────────────────────────────────────
         now       = time.perf_counter()
@@ -130,12 +126,9 @@ def main():
         # ── Render ────────────────────────────────────────────────────────────
         out = renderer.render(
             frame, seg_mask, landmarks, labels.get_labels(), dt,
+            category=category, confidence=confidence,
             debug=debug, presentation=presentation,
         )
-
-        # ── HUD ───────────────────────────────────────────────────────────────
-        if not presentation:
-            _draw_hud(out, category, confidence, debug)
 
         cv2.imshow(config.WINDOW_TITLE, out)
 
@@ -154,30 +147,6 @@ def main():
     tracker.close()
     cap.release()
     cv2.destroyAllWindows()
-
-
-def _draw_hud(frame, category: str, confidence: float, debug: bool):
-    """
-    Small category readout in the top-right corner.
-    Shows the current gender classification and confidence percentage.
-    """
-    font  = cv2.FONT_HERSHEY_SIMPLEX
-    color = _HUD_COLORS.get(category, (200, 200, 200))
-    h, w  = frame.shape[:2]
-
-    text = f"{category}  {confidence:.0%}"
-    (tw, _), _ = cv2.getTextSize(text, font, 0.72, 2)
-
-    x = w - tw - 20
-    y = 36
-
-    # Black outline for legibility on any background
-    cv2.putText(frame, text, (x, y), font, 0.72, (0, 0, 0), 4, cv2.LINE_AA)
-    cv2.putText(frame, text, (x, y), font, 0.72, color,    2, cv2.LINE_AA)
-
-    if debug:
-        cv2.putText(frame, "DEBUG", (20, 36), font, 0.55,
-                    (0, 255, 80), 2, cv2.LINE_AA)
 
 
 if __name__ == "__main__":
