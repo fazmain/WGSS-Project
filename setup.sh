@@ -29,6 +29,12 @@ app.prepare(ctx_id=-1, det_size=(320, 320))
 print('Gender model ready.')
 "
 
+echo "==> Preparing models for the web version (web/) ..."
+curl -L \
+  "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite" \
+  -o models/blaze_face_short_range.tflite
+cp ~/.insightface/models/buffalo_s/genderage.onnx models/genderage.onnx
+
 echo ""
 echo "Setup complete!"
 echo ""
